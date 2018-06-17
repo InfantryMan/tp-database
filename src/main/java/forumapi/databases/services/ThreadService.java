@@ -148,14 +148,14 @@ public class ThreadService {
     public Thread changeVote(Thread thread, Vote vote) {
         Thread returnThread = null;
         String sqlSelect = "SELECT voice FROM votes WHERE thread = ? AND nickname = ?;";
-        Integer voiceDB = 0;
+        Integer voiceDB;
         Integer voiceClient = vote.getVoice();
         Integer totalVoice = 0;
 
         try {
             voiceDB = jdbc.queryForObject(sqlSelect, Integer.class, thread.getId(), vote.getNickname());
         } catch (DataAccessException e) {
-            System.out.println(e.getMessage());
+            voiceDB = 0;
         }
 
         if ( (voiceClient == 1 && voiceDB == 1) || (voiceClient == -1 && voiceDB == -1) ) {
@@ -183,7 +183,6 @@ public class ThreadService {
             try {
                 jdbc.update(sqlUpdate, totalVoice, thread.getId());
             } catch (DataAccessException e) {
-                System.out.println(e.getMessage());
                 return null;
             }
         }
@@ -193,7 +192,6 @@ public class ThreadService {
             try {
                 jdbc.update(sqlInsert, vote.getNickname(), voiceClient, thread.getId());
             } catch (DataAccessException e) {
-                System.out.println(e.getMessage());
                 return null;
             }
         }
@@ -203,7 +201,6 @@ public class ThreadService {
             try {
                 jdbc.update(sqlUpdate, voiceClient, thread.getId());
             } catch (DataAccessException e) {
-                System.out.println(e.getMessage());
                 return null;
             }
         }
@@ -212,7 +209,6 @@ public class ThreadService {
         try {
             returnThread = jdbc.queryForObject(sqlSelectThread, new threadMapper(), thread.getId());
         } catch (DataAccessException e) {
-            System.out.println(e.getMessage());
             return null;
         }
 

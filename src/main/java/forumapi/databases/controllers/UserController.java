@@ -43,7 +43,7 @@ public class UserController {
     public ResponseEntity userProfile(@PathVariable("nickName") String nickName) {
         User user = userService.getUserByNickName(nickName);
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_NOT_FOUND + nickName));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_NOT_FOUND.getMessage() + nickName));
         }
         return ResponseEntity.status(HttpStatus.OK).body(user);
     }
@@ -52,13 +52,13 @@ public class UserController {
     @RequestMapping(path="{nickName}/profile", method = RequestMethod.POST)
     public ResponseEntity userProfile(@PathVariable("nickName") String nickName, @RequestBody User updateUser) {
         if (userService.getUserByNickName(nickName) == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_NOT_FOUND + nickName));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_NOT_FOUND.getMessage() + nickName));
         }
 
         User user =  userService.updateUser(nickName, updateUser);
         if (user == null) {
             User oldUser = userService.getUserByEmail(updateUser.getEmail());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(new Message(MessageStates.EMAIL_ALREADY_REGISTERED + oldUser.getNickname()));
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new Message(MessageStates.EMAIL_ALREADY_REGISTERED.getMessage() + oldUser.getNickname()));
         }
         return ResponseEntity.status(HttpStatus.OK).body(user);
     }
