@@ -48,7 +48,7 @@ ADD ./ $WORK/
 
 # Собираем и устанавливаем пакет
 WORKDIR $WORK
-RUN ./mvnw clean package -DskipTests
+RUN mvn package
 
 # Объявлем порт сервера
 EXPOSE 5000
