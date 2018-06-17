@@ -15,8 +15,8 @@ USER postgres
 # Create a PostgreSQL role named ``docker`` with ``docker`` as the password and
 # then create a database `docker` owned by the ``docker`` role.
 RUN /etc/init.d/postgresql start &&\
-    psql --command "ALTER USER postgres WITH PASSWORD 'postgres';" &&\
-    createdb postgres &&\
+    psql --command "CREATE USER docker WITH SUPERUSER PASSWORD 'docker';" &&\
+    createdb --owner=docker docker &&\
     /etc/init.d/postgresql stop
 
 # Adjust PostgreSQL configuration so that remote connections to the
@@ -48,7 +48,7 @@ ADD ./ $WORK/
 
 # Собираем и устанавливаем пакет
 WORKDIR $WORK
-RUN mvn package
+RUN ./mvnw clean package -DskipTests
 
 # Объявлем порт сервера
 EXPOSE 5000
@@ -56,5 +56,6 @@ EXPOSE 5000
 #
 # Запускаем PostgreSQL и сервер
 #
-CMD service postgresql start && java -Xmx300M -Xmx300M -jar ./target/forum-1.0.0-SNAPSHOT.jar
+CMD service postgresql start && java -Xmx300M -Xmx300M -jar ./target/databases-0.0.1-SNAPSHOT.jar
+
 

@@ -134,22 +134,22 @@ public class UserService {
         final String [] queries = {
                 "SELECT * FROM users u JOIN (SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?)) uf " +
                 "ON u.nickname = uf.author " +
-                "ORDER BY LOWER(nickname COLLATE \"ucs_basic\") ASC " +
+                "ORDER BY LOWER(nickname COLLATE \"C\") ASC " +
                 "LIMIT ?; ",
 
                 "SELECT * FROM users u JOIN (SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?)) uf " +
                 "ON u.nickname = uf.author " +
-                "ORDER BY LOWER(nickname COLLATE \"ucs_basic\") DESC " +
+                "ORDER BY LOWER(nickname COLLATE \"C\") DESC " +
                 "LIMIT ?; ",
 
-                "SELECT * FROM users u JOIN ( SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?) AND LOWER(author COLLATE \"ucs_basic\") > LOWER(?) ) uf " +
+                "SELECT * FROM users u JOIN ( SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?) AND LOWER(author COLLATE \"C\") > LOWER(?) ) uf " +
                 "ON u.nickname = uf.author " +
-                "ORDER BY LOWER(nickname COLLATE \"ucs_basic\") ASC " +
+                "ORDER BY LOWER(nickname COLLATE \"C\") ASC " +
                 "LIMIT ?; ",
 
-                "SELECT * FROM users u JOIN ( SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?) AND LOWER(author COLLATE \"ucs_basic\") < LOWER(?) ) uf " +
+                "SELECT * FROM users u JOIN ( SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?) AND LOWER(author COLLATE \"C\") < LOWER(?) ) uf " +
                 "ON u.nickname = uf.author " +
-                "ORDER BY LOWER(nickname COLLATE \"ucs_basic\") DESC " +
+                "ORDER BY LOWER(nickname COLLATE \"C\") DESC " +
                 "LIMIT ?; ",
         };
 

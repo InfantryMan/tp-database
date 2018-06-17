@@ -91,14 +91,13 @@ public class ForumContoller {
 
     // Done
     @RequestMapping(path="/{slug}/threads", method = RequestMethod.GET)
-    public ResponseEntity showThreads(@PathVariable("slug") String forumSlug, @RequestParam(value = "limit", required = false) Integer limit, @RequestParam(value = "since", required = false) String since, @RequestParam(value = "desc", required = false) Boolean desc) {
+    public ResponseEntity showThreads(@PathVariable("slug") String forumSlug,
+                                      @RequestParam(value = "limit", required = false) Integer limit,
+                                      @RequestParam(value = "since", required = false) String since,
+                                      @RequestParam(value = "desc", required = false, defaultValue = "false") Boolean desc) {
         Forum forum = forumService.getForumBySlug(forumSlug);
         if (forum == null)
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.FORUM_NOT_FOUND.getMessage() + forumSlug));
-
-        if (desc == null) {
-            desc = false;
-        }
 
         List<Thread> threadList = threadService.getThreadsByForumSlug(forumSlug, limit, since, desc);
         return ResponseEntity.status(HttpStatus.OK).body(threadList);
@@ -109,19 +108,15 @@ public class ForumContoller {
     public ResponseEntity showUsers(@PathVariable("slug") String forumSlug,
                                     @RequestParam(value = "limit", required = false) Integer limit,
                                     @RequestParam(value = "since", required = false) String since,
-                                    @RequestParam(value = "desc", required = false) Boolean desc) {
+                                    @RequestParam(value = "desc", required = false, defaultValue = "false") Boolean desc) {
 
         Forum forum = forumService.getForumBySlug(forumSlug);
 
         if (forum == null)
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.FORUM_NOT_FOUND.getMessage() + forumSlug));
 
-        if (desc == null) {
-            desc = false;
-        }
-
         List<User> userList = userService.getUsersByForumSlug(forumSlug, limit, since, desc);
-        if(userList == null){
+        if(userList == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_IN_FORUM_NOT_FOUND.getMessage() + forumSlug));
         }
 
