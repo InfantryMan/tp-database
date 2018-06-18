@@ -158,8 +158,8 @@ public class ThreadService {
             voiceDB = 0;
         }
 
-        if ( (voiceClient == 1 && voiceDB == 1) || (voiceClient == -1 && voiceDB == -1) ) {
-            totalVoice = 0;
+        if ( voiceClient.equals(voiceDB) ) {
+            return thread;
         }
 
         if (voiceClient == 1 && voiceDB == -1) {
@@ -178,13 +178,11 @@ public class ThreadService {
             totalVoice = -1;
         }
 
-        if (totalVoice != 0) {
-            String sqlUpdate = "UPDATE threads SET votes = votes + ? WHERE id = ?;";
-            try {
-                jdbc.update(sqlUpdate, totalVoice, thread.getId());
-            } catch (DataAccessException e) {
-                return null;
-            }
+        String sqlUpdateThread = "UPDATE threads SET votes = votes + ? WHERE id = ?;";
+        try {
+            jdbc.update(sqlUpdateThread, totalVoice, thread.getId());
+        } catch (DataAccessException e) {
+            return null;
         }
 
         if (voiceDB == 0) {
@@ -197,9 +195,9 @@ public class ThreadService {
         }
 
         if (totalVoice == 2 || totalVoice == -2) {
-            String sqlUpdate = "UPDATE votes SET voice = ? WHERE thread = ?;";
+            String sqlUpdate = "UPDATE votes SET voice = ? WHERE thread = ? AND nickname = ?;";
             try {
-                jdbc.update(sqlUpdate, voiceClient, thread.getId());
+                jdbc.update(sqlUpdate, voiceClient, thread.getId(), vote.getNickname());
             } catch (DataAccessException e) {
                 return null;
             }
