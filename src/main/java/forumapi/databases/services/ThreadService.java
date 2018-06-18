@@ -47,7 +47,7 @@ public class ThreadService {
         final String sqlUpdateThreadsInForum = "UPDATE forum SET threads = threads + 1 WHERE slug = ?;";
         final String sqlUpdateCreatedInThread = "UPDATE threads SET created = ? WHERE id = ? ;";
         final String sqlUpdateSlugInThread = "UPDATE threads SET slug = ? WHERE id = ?" ;
-        final String sqlInsertUserForum = "SELECT insert_users_forum(?::CITEXT,?::CITEXT)";
+        final String sqlInsertUserForum = "SELECT insert_users_forum(?::CITEXT, ?::CITEXT)";
         try {
             Integer id = jdbc.queryForObject(sqlInsertThread, Integer.class, thread.getAuthor(), thread.getForum(), thread.getMessage(), thread.getTitle());
             jdbc.update(sqlUpdateThreadsInForum, thread.getForum());

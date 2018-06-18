@@ -3,6 +3,8 @@
 .mvn/
 mvnw
 
+commands.txt
+
 mvnw.cmd
 
 /src/test/*
