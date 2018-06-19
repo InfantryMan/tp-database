@@ -41,7 +41,7 @@ public class UserController {
 
     // Done
     @RequestMapping(path="{nickName}/profile", method = RequestMethod.GET)
-    public ResponseEntity userProfile(@PathVariable("nickName") String nickName) {
+    public ResponseEntity userProfileGet(@PathVariable("nickName") String nickName) {
         User user = userService.getUserByNickName(nickName);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_NOT_FOUND.getMessage() + nickName));
@@ -51,7 +51,7 @@ public class UserController {
 
     // Done
     @RequestMapping(path="{nickName}/profile", method = RequestMethod.POST)
-    public ResponseEntity userProfile(@PathVariable("nickName") String nickName,
+    public ResponseEntity userProfilePost(@PathVariable("nickName") String nickName,
                                       @RequestBody User updateUser) {
         User userDB = userService.getUserByNickName(nickName);
         if (userDB == null) {

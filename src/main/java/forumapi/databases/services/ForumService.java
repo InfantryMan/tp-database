@@ -3,6 +3,7 @@ package forumapi.databases.services;
 import forumapi.databases.models.Forum;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -51,7 +52,10 @@ public class ForumService {
         Forum forum = null;
         try {
             forum = jdbc.queryForObject(sql, new forumMapper(), slug);
+        } catch(EmptyResultDataAccessException e) {
+            return null;
         } catch (DataAccessException e) {
+            e.printStackTrace();
             return null;
         }
         return forum;

@@ -79,7 +79,7 @@ public class UserService {
         final String sql = "SELECT * FROM users WHERE lower(email) = lower(?);";
         User user = null;
         try {
-            user = jdbc.queryForObject(sql, new Object [] {email}, new userMapper());
+            user = jdbc.queryForObject(sql, new userMapper(), email);
         } catch (DataAccessException e) {
             return null;
         }
@@ -124,25 +124,49 @@ public class UserService {
     // Done
     public List<User> getUsersByForumSlug(String forumSlug, Integer limit, String since, Boolean desc) {
         final String [] queries = {
-                "SELECT * FROM users u JOIN (SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?)) uf " +
-                "ON u.nickname = uf.author " +
+//                "SELECT * FROM users u  JOIN (SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?)) uf " +
+//                "ON u.nickname = uf.author " +
+//                "ORDER BY LOWER(nickname COLLATE \"C\") ASC " +
+//                "LIMIT ?; ",
+//
+//                "SELECT * FROM users u JOIN (SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?)) uf " +
+//                "ON u.nickname = uf.author " +
+//                "ORDER BY LOWER(nickname COLLATE \"C\") DESC " +
+//                "LIMIT ?; ",
+//
+//                "SELECT * FROM users u JOIN ( SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?) AND LOWER(author COLLATE \"C\") > LOWER(?) ) uf " +
+//                "ON u.nickname = uf.author " +
+//                "ORDER BY LOWER(nickname COLLATE \"C\") ASC " +
+//                "LIMIT ?; ",
+//
+//                "SELECT * FROM users u JOIN ( SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?) AND LOWER(author COLLATE \"C\") < LOWER(?) ) uf " +
+//                "ON u.nickname = uf.author " +
+//                "ORDER BY LOWER(nickname COLLATE \"C\") DESC " +
+//                "LIMIT ?; ",
+
+                "SELECT * FROM users u  JOIN users_forum uf " +
+                "ON (u.nickname = uf.author) " +
+                "WHERE LOWER(uf.forum) = LOWER(?) " +
                 "ORDER BY LOWER(nickname COLLATE \"C\") ASC " +
-                "LIMIT ?; ",
+                "LIMIT ?;",
 
-                "SELECT * FROM users u JOIN (SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?)) uf " +
-                "ON u.nickname = uf.author " +
+                "SELECT * FROM users u  JOIN users_forum uf " +
+                "ON (u.nickname = uf.author) " +
+                "WHERE LOWER(uf.forum) = LOWER(?) " +
                 "ORDER BY LOWER(nickname COLLATE \"C\") DESC " +
-                "LIMIT ?; ",
+                "LIMIT ?;",
 
-                "SELECT * FROM users u JOIN ( SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?) AND LOWER(author COLLATE \"C\") > LOWER(?) ) uf " +
-                "ON u.nickname = uf.author " +
+                "SELECT * FROM users u  JOIN users_forum uf " +
+                "ON (u.nickname = uf.author) " +
+                "WHERE LOWER(uf.forum) = LOWER(?) AND lower(nickname COLLATE \"C\") > lower(? COLLATE \"C\") " +
                 "ORDER BY LOWER(nickname COLLATE \"C\") ASC " +
-                "LIMIT ?; ",
+                "LIMIT ?;",
 
-                "SELECT * FROM users u JOIN ( SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?) AND LOWER(author COLLATE \"C\") < LOWER(?) ) uf " +
-                "ON u.nickname = uf.author " +
+                "SELECT * FROM users u  JOIN users_forum uf " +
+                "ON (u.nickname = uf.author) " +
+                "WHERE LOWER(uf.forum) = LOWER(?) AND lower(nickname COLLATE \"C\") < lower(? COLLATE \"C\") " +
                 "ORDER BY LOWER(nickname COLLATE \"C\") DESC " +
-                "LIMIT ?; ",
+                "LIMIT ?;"
         };
 
         String sql = null;
@@ -157,6 +181,7 @@ public class UserService {
                 userList = jdbc.query(sql, new userMapper(), forumSlug, since, limit);
             else
                 userList = jdbc.query(sql, new userMapper(), forumSlug, limit);
+            System.out.println(userList);
         } catch (DataAccessException e) {
             return null;
         }
