@@ -139,8 +139,8 @@ public class PostService {
         final String sqlSeq =  "SELECT nextval('posts_id_seq');";
         final String sqlTime = "SELECT current_timestamp ;";
         final String sqlInsertUserForum = "SELECT insert_users_forum(?::CITEXT,?::CITEXT)";
-        final String sqlInsertPostNoPostPath = "INSERT INTO posts(id, parent, author, message, thread, forum, created, post_path) " +
-                "VALUES(?,?,?,?,?,?,?, array_append(?, ?) );";
+        final String sqlInsertPostNoPostPath =  "INSERT INTO posts(id, parent, author, message, thread, forum, created, post_path) " +
+                                                "VALUES(?,?,?,?,?,?,?, array_append(?, ?) );";
         final String sqlSelectPostPath = "SELECT post_path FROM posts WHERE id = ?";
 
         List<Post> newPosts = new ArrayList<>();
