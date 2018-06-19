@@ -153,29 +153,30 @@ public class PostService {
 
                 @Override
                 public void setValues(PreparedStatement preparedStatement, int i) throws SQLException {
+                    Post post = posts.get(i);
                     Integer seq = jdbc.queryForObject(sqlSeq, Integer.class);
-                    posts.get(i).setId(seq);
-                    posts.get(i).setCreated(time);
-                    preparedStatement.setInt(1, posts.get(i).getId());
-                    preparedStatement.setInt(2, posts.get(i).getParent());
-                    preparedStatement.setString(3, posts.get(i).getAuthor());
-                    preparedStatement.setString(4, posts.get(i).getMessage());
-                    preparedStatement.setInt(5, posts.get(i).getThread());
-                    preparedStatement.setString(6, posts.get(i).getForum());
+                    post.setId(seq);
+                    post.setCreated(time);
+                    preparedStatement.setInt(1, post.getId());
+                    preparedStatement.setInt(2, post.getParent());
+                    preparedStatement.setString(3, post.getAuthor());
+                    preparedStatement.setString(4, post.getMessage());
+                    preparedStatement.setInt(5, post.getThread());
+                    preparedStatement.setString(6, post.getForum());
                     preparedStatement.setTimestamp(7, curr_time);
-                    preparedStatement.setInt(8, posts.get(i).getParent());
-                    preparedStatement.setInt(9, posts.get(i).getId());
+                    preparedStatement.setInt(8, post.getParent());
+                    preparedStatement.setInt(9, post.getId());
 
 
-                    if (!updatedForums.containsKey(posts.get(i).getForum())) {
-                        updatedForums.put(posts.get(i).getForum(), 1);
+                    if (!updatedForums.containsKey(post.getForum())) {
+                        updatedForums.put(post.getForum(), 1);
                     } else {
-                        updatedForums.put(posts.get(i).getForum(), updatedForums.get(posts.get(i).getForum()) + 1);
+                        updatedForums.put(post.getForum(), updatedForums.get(post.getForum()) + 1);
                     }
 
-                    jdbc.queryForObject(sqlInsertUserForum, Object.class, posts.get(i).getForum(), posts.get(i).getAuthor());
+                    jdbc.queryForObject(sqlInsertUserForum, Object.class, post.getForum(), post.getAuthor());
 
-                    newPosts.add(posts.get(i));
+                    newPosts.add(post);
                 }
 
                 @Override
