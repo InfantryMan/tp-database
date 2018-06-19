@@ -57,4 +57,10 @@ public class User {
             return false;
         return true;
     }
+
+    public Boolean isEmpty() {
+        if (nickname == null && about == null && email == null && fullname == null)
+            return true;
+        return false;
+    }
 }

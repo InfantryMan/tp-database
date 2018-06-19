@@ -53,20 +53,31 @@ public class UserController {
     @RequestMapping(path="{nickName}/profile", method = RequestMethod.POST)
     public ResponseEntity userProfile(@PathVariable("nickName") String nickName,
                                       @RequestBody User updateUser) {
-        if (userService.getUserByNickName(nickName) == null) {
+        User userDB = userService.getUserByNickName(nickName);
+        if (userDB == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_NOT_FOUND.getMessage() + nickName));
         }
 
-        User user =  userService.updateUser(nickName, updateUser);
-        if (user == null) {
-            User oldUser = userService.getUserByEmail(updateUser.getEmail());
-            if (oldUser != null)
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(new Message(MessageStates.EMAIL_ALREADY_REGISTERED.getMessage() + oldUser.getEmail()));
-            oldUser = userService.getUserByNickName(updateUser.getNickname());
-            if (oldUser != null)
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(new Message(MessageStates.NICKNAME_ALREADY_REGISTERED.getMessage() + oldUser.getNickname()));
+        if (updateUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.OK).body(userDB);
         }
-        return ResponseEntity.status(HttpStatus.OK).body(user);
+
+        Integer code = userService.updateUser(nickName, updateUser);
+//        if (user == null) {
+//            User oldUser = userService.getUserByEmail(updateUser.getEmail());
+//            if (oldUser != null)
+//                return ResponseEntity.status(HttpStatus.CONFLICT).body(new Message(MessageStates.EMAIL_ALREADY_REGISTERED.getMessage() + oldUser.getEmail()));
+//            oldUser = userService.getUserByNickName(updateUser.getNickname());
+//            if (oldUser != null)
+//                return ResponseEntity.status(HttpStatus.CONFLICT).body(new Message(MessageStates.NICKNAME_ALREADY_REGISTERED.getMessage() + oldUser.getNickname()));
+//        }
+
+        if (code == -1) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new Message(MessageStates.EMAIL_OR_LOGIN_ALREADY_REGISTERED.getMessage()));
+        }
+
+
+        return ResponseEntity.status(HttpStatus.OK).body(userService.getUserByNickName(nickName));
     }
 
 

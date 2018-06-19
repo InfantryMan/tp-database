@@ -30,7 +30,7 @@ public class UserService {
     }
 
     public void truncateTable() {
-        String sql = "TRUNCATE TABLE users CASCADE ;";
+        String sql = "TRUNCATE TABLE users, users_forum CASCADE ;";
         jdbc.execute(sql);
     }
 
@@ -86,7 +86,7 @@ public class UserService {
         return user;
     }
 
-    public User updateUser(String userNickName, User updateUser) {
+    public Integer updateUser(String userNickName, User updateUser) {
         StringBuilder sql = new StringBuilder("UPDATE users SET ");
 
         String newUserEmail = updateUser.getEmail();
@@ -94,39 +94,31 @@ public class UserService {
         String newUserAbout = updateUser.getAbout();
         String newUserNickname = updateUser.getNickname();
 
-        Boolean isUpdate = false;
-
         if (newUserEmail != null) {
             sql.append("email = \'" + newUserEmail + "\', ");
-            isUpdate = true;
         }
         if (newUserFullname != null) {
             sql.append("fullname = \'" + newUserFullname + "\', ");
-            isUpdate = true;
         }
         if ( newUserAbout != null ) {
             sql.append("about = \'" + newUserAbout + "\', ");
-            isUpdate = true;
         }
         if ( newUserNickname != null ) {
             sql.append("nickname = \'" + newUserNickname + "\', ");
-            isUpdate = true;
         }
 
         sql.deleteCharAt(sql.toString().length() - 2);
-        sql.append("WHERE nickname = \'" + userNickName + "\' RETURNING *;");
+        sql.append("WHERE lower(nickname) = lower(\'" + userNickName + "\'); ");
 
         User returnUser = null;
-        if (isUpdate) {
-            try {
-                returnUser = jdbc.queryForObject(sql.toString(), new userMapper());
-            } catch (DuplicateKeyException e) {
-                return null;
-            }
-        } else {
-            returnUser = getUserByNickName(userNickName);
+        try {
+            jdbc.update(sql.toString());
+        } catch (DuplicateKeyException e) {
+            return -1;
+        } catch (DataAccessException e) {
+            return -2;
         }
-        return returnUser;
+        return 0;
     }
 
     // Done

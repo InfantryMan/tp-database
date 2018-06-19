@@ -54,6 +54,20 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+
+			<!--<plugin>-->
+				<!--<groupId>org.flywaydb</groupId>-->
+				<!--<artifactId>flyway-maven-plugin</artifactId>-->
+				<!--<version>${flyway.version}</version>-->
+				<!--<configuration>-->
+					<!--<schemas>-->
+						<!--<schema>flyway_demo</schema>-->
+					<!--</schemas>-->
+					<!--<user>docker</user>-->
+					<!--<password>docker</password>-->
+					<!--<url>jdbc:postgresql://127.0.0.1:5432/docker</url>-->
+				<!--</configuration>-->
+			<!--</plugin>-->
 		</plugins>
 	</build>
 

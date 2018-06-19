@@ -67,11 +67,11 @@ public class ForumContoller {
 
         User user = userService.getUserByNickName(threadBody.getAuthor());
         if (user == null)
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_NOT_FOUND + threadBody.getAuthor()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_NOT_FOUND.getMessage() + threadBody.getAuthor()));
 
         Forum forum = forumService.getForumBySlug(forumSlug);
         if (forum == null)
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.FORUM_NOT_FOUND + forumSlug));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.FORUM_NOT_FOUND.getMessage() + forumSlug));
 
         threadBody.setAuthor(user.getNickname());
         threadBody.setForum(forum.getSlug());
