@@ -10,11 +10,9 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -141,6 +139,9 @@ public class PostService {
         final String sqlSeq =  "SELECT nextval('posts_id_seq');";
         final String sqlTime = "SELECT current_timestamp ;";
         final String sqlInsertUserForum = "SELECT insert_users_forum(?::CITEXT,?::CITEXT)";
+        final String sqlInsertPostNoPostPath = "INSERT INTO posts(id, parent, author, message, thread, forum, created, post_path) " +
+                "VALUES(?,?,?,?,?,?,?, array_append(?, ?) );";
+        final String sqlSelectPostPath = "SELECT post_path FROM posts WHERE id = ?";
 
         List<Post> newPosts = new ArrayList<>();
         Map<String, Integer> updatedForums = new HashMap<>();
@@ -149,12 +150,18 @@ public class PostService {
         final String time = curr_time.toInstant().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
         try {
-            jdbc.batchUpdate(sqlInsertPost, new BatchPreparedStatementSetter() {
+            jdbc.batchUpdate(sqlInsertPostNoPostPath, new BatchPreparedStatementSetter() {
 
                 @Override
                 public void setValues(PreparedStatement preparedStatement, int i) throws SQLException {
                     Post post = posts.get(i);
                     Integer seq = jdbc.queryForObject(sqlSeq, Integer.class);
+                    Array post_path;
+                    try {
+                        post_path = jdbc.queryForObject(sqlSelectPostPath, Array.class, post.getParent());
+                    } catch (DataAccessException e) {
+                        post_path = null;
+                    }
                     post.setId(seq);
                     post.setCreated(time);
                     preparedStatement.setInt(1, post.getId());
@@ -164,7 +171,7 @@ public class PostService {
                     preparedStatement.setInt(5, post.getThread());
                     preparedStatement.setString(6, post.getForum());
                     preparedStatement.setTimestamp(7, curr_time);
-                    preparedStatement.setInt(8, post.getParent());
+                    preparedStatement.setArray(8, post_path);
                     preparedStatement.setInt(9, post.getId());
 
 
@@ -188,11 +195,17 @@ public class PostService {
             return null;
         }
 
-        List<Map.Entry<String, Integer>> updatedForumsList = new ArrayList<>();
+//        List<Map.Entry<String, Integer>> updatedForumsList = new ArrayList<>();
+//
+//        for (Map.Entry<String, Integer> entry: updatedForums.entrySet()) {
+//            updatedForumsList.add(entry);
+//        }
 
-        for (Map.Entry<String, Integer> entry: updatedForums.entrySet()) {
-            updatedForumsList.add(entry);
-        }
+        List<Map.Entry<String, Integer>> updatedForumsList = new ArrayList<>(updatedForums.entrySet());
+
+//        for (Map.Entry<String, Integer> entry: updatedForums.entrySet()) {
+//            updatedForumsList.add(entry);
+//        }
 
         try {
             jdbc.batchUpdate(sqlUpdateForum, new BatchPreparedStatementSetter() {
