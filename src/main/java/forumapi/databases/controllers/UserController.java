@@ -23,7 +23,8 @@ public class UserController {
 
     // Done
     @RequestMapping(path="{nickName}/create", method = RequestMethod.POST)
-    public ResponseEntity userCreate(@PathVariable("nickName") String nickName, @RequestBody User userBody) {
+    public ResponseEntity userCreate(@PathVariable("nickName") String nickName,
+                                     @RequestBody User userBody) {
         userBody.setNickname(nickName);
         if (!userBody.checkUser())
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -50,7 +51,8 @@ public class UserController {
 
     // Done
     @RequestMapping(path="{nickName}/profile", method = RequestMethod.POST)
-    public ResponseEntity userProfile(@PathVariable("nickName") String nickName, @RequestBody User updateUser) {
+    public ResponseEntity userProfile(@PathVariable("nickName") String nickName,
+                                      @RequestBody User updateUser) {
         if (userService.getUserByNickName(nickName) == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_NOT_FOUND.getMessage() + nickName));
         }
@@ -58,7 +60,11 @@ public class UserController {
         User user =  userService.updateUser(nickName, updateUser);
         if (user == null) {
             User oldUser = userService.getUserByEmail(updateUser.getEmail());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(new Message(MessageStates.EMAIL_ALREADY_REGISTERED.getMessage() + oldUser.getNickname()));
+            if (oldUser != null)
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(new Message(MessageStates.EMAIL_ALREADY_REGISTERED.getMessage() + oldUser.getEmail()));
+            oldUser = userService.getUserByNickName(updateUser.getNickname());
+            if (oldUser != null)
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(new Message(MessageStates.NICKNAME_ALREADY_REGISTERED.getMessage() + oldUser.getNickname()));
         }
         return ResponseEntity.status(HttpStatus.OK).body(user);
     }

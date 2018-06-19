@@ -2,7 +2,8 @@ package forumapi.databases.messages;
 
 public enum MessageStates {
     USER_NOT_FOUND("Can't find user by nickname: "),
-    EMAIL_ALREADY_REGISTERED("This email is already registered by user: "),
+    EMAIL_ALREADY_REGISTERED("This email is already registered: "),
+    NICKNAME_ALREADY_REGISTERED("This nickname is already registered: "),
     FORUM_NOT_FOUND("Can't find forum by slug: "),
     THREAD_NOT_FOUND("Can't find thread by slug or id: "),
     POST_NOT_FOUND("Can't find post by id: "),
