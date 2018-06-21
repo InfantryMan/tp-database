@@ -47,11 +47,17 @@ public class ThreadService {
         final String sqlUpdateThreadsInForum = "UPDATE forum SET threads = threads + 1 WHERE slug = ?;";
         final String sqlUpdateCreatedInThread = "UPDATE threads SET created = ? WHERE id = ? ;";
         final String sqlUpdateSlugInThread = "UPDATE threads SET slug = ? WHERE id = ?" ;
-        final String sqlInsertUserForum = "SELECT insert_users_forum(?::CITEXT, ?::CITEXT)";
+        final String sqlSelectUserForum = "SELECT COUNT(*) FROM users_forum " +
+                "WHERE lower(author) = lower(?) AND lower(forum) = lower(?) " +
+                "LIMIT 1; ";
+        final String sqlInsertUserForum = "INSERT INTO users_forum(forum, author) VALUES (?, ?); ";
         try {
             Integer id = jdbc.queryForObject(sqlInsertThread, Integer.class, thread.getAuthor(), thread.getForum(), thread.getMessage(), thread.getTitle());
             jdbc.update(sqlUpdateThreadsInForum, thread.getForum());
-            jdbc.queryForObject(sqlInsertUserForum, Object.class, thread.getForum(), thread.getAuthor());
+            Integer isUserForum = jdbc.queryForObject(sqlSelectUserForum, Integer.class, thread.getAuthor(), thread.getForum());
+            if (isUserForum == 0) {
+                jdbc.update(sqlInsertUserForum, thread.getForum(), thread.getAuthor());
+            }
             if (thread.getCreated() != null) {
                 String str = ZonedDateTime.parse(thread.getCreated()).format(DateTimeFormatter.ISO_INSTANT);
                 jdbc.update(sqlUpdateCreatedInThread, new Timestamp(ZonedDateTime.parse(str).toLocalDateTime().toInstant(ZoneOffset.UTC).toEpochMilli()), id );

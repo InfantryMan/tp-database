@@ -133,15 +133,16 @@ public class PostService {
 
     // Done
     public List<Post> addPostList(List<Post> posts) {
-        final String sqlInsertPost = "INSERT INTO posts(id, parent, author, message, thread, forum, created, post_path) " +
-                                     "VALUES(?,?,?,?,?,?,?, array_append((SELECT post_path FROM posts WHERE id = ?), ?) );";
         final String sqlUpdateForum = "UPDATE forum SET posts = posts + ? WHERE slug = ?";
         final String sqlSeq =  "SELECT nextval('posts_id_seq');";
         final String sqlTime = "SELECT current_timestamp ;";
-        final String sqlInsertUserForum = "SELECT insert_users_forum(?::CITEXT,?::CITEXT)";
+        final String sqlInsertUserForum = "INSERT INTO users_forum(forum, author) VALUES (?, ?); ";
         final String sqlInsertPostNoPostPath =  "INSERT INTO posts(id, parent, author, message, thread, forum, created, post_path) " +
                                                 "VALUES(?,?,?,?,?,?,?, array_append(?, ?) );";
         final String sqlSelectPostPath = "SELECT post_path FROM posts WHERE id = ?";
+        final String sqlSelectUserForum = "SELECT COUNT(*) FROM users_forum " +
+                "WHERE lower(author) = lower(?) AND lower(forum) = lower(?) " +
+                "LIMIT 1;";
 
         List<Post> newPosts = new ArrayList<>();
         Map<String, Integer> updatedForums = new HashMap<>();
@@ -181,7 +182,10 @@ public class PostService {
                         updatedForums.put(post.getForum(), updatedForums.get(post.getForum()) + 1);
                     }
 
-                    jdbc.queryForObject(sqlInsertUserForum, Object.class, post.getForum(), post.getAuthor());
+                    Integer isUserExist = jdbc.queryForObject(sqlSelectUserForum, Integer.class, post.getAuthor(), post.getForum());
+                    if (isUserExist == 0) {
+                        jdbc.update(sqlInsertUserForum, post.getForum(), post.getAuthor());
+                    }
 
                     newPosts.add(post);
                 }

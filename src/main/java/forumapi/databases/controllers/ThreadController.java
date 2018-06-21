@@ -65,8 +65,6 @@ public class ThreadController {
             post.setThread(thread.getId());
             if (parentId == null) {
                 post.setParent(0);
-            } else {
-                post.setParent(parentId);
             }
             String nickname = post.getAuthor();
             if (userService.getUserByNickName(nickname) == null) {
