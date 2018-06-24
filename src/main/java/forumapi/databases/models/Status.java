@@ -6,53 +6,53 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Status {
     @JsonProperty
-    private int user;
+    private Integer user;
     @JsonProperty
-    private int forum;
+    private Integer forum;
     @JsonProperty
-    private int thread;
+    private Integer thread;
     @JsonProperty
-    private int post;
+    private Integer post;
 
 
     @JsonCreator
-    public Status(@JsonProperty("user") int user, @JsonProperty("forum") int forum,
-                  @JsonProperty("thread") int thread, @JsonProperty("post") int post){
+    public Status(@JsonProperty("user") Integer user, @JsonProperty("forum") Integer forum,
+                  @JsonProperty("thread") Integer thread, @JsonProperty("post") Integer post){
         this.user = user;
         this.forum = forum;
         this.thread = thread;
         this.post = post;
     }
 
-    public int getUser() {
+    public Integer getUser() {
         return user;
     }
 
-    public int getForum() {
+    public Integer getForum() {
         return forum;
     }
 
-    public int getThread() {
+    public Integer getThread() {
         return thread;
     }
 
-    public int getPost() {
+    public Integer getPost() {
         return post;
     }
 
-    public void setUser(int user) {
+    public void setUser(Integer user) {
         this.user = user;
     }
 
-    public void setForum(int forum) {
+    public void setForum(Integer forum) {
         this.forum = forum;
     }
 
-    public void setThread(int thread) {
+    public void setThread(Integer thread) {
         this.thread = thread;
     }
 
-    public void setPost(int post) {
+    public void setPost(Integer post) {
         this.post = post;
     }
 }

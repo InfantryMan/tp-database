@@ -8,11 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class ApplicationService {
-    final private UserService userService;
-    final private PostService postService;
-    final private VoteService voteService;
-    final private ForumService forumService;
-    final private  ThreadService threadService;
+     private final UserService userService;
+     private final PostService postService;
+     private final VoteService voteService;
+     private final ForumService forumService;
+     private final  ThreadService threadService;
 
     @Autowired
     public ApplicationService(UserService userService,

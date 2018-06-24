@@ -1,15 +1,19 @@
 package forumapi.databases.services;
 
+import ch.qos.logback.classic.db.SQLBuilder;
 import forumapi.databases.models.Post;
 import forumapi.databases.models.PostUpdate;
+import forumapi.databases.models.Queries;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.xml.crypto.Data;
 import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -24,89 +28,38 @@ import java.util.Map;
 public class PostService {
     private final JdbcTemplate jdbc;
 
-    private final String sqlCountPosts = "SELECT COUNT(id) FROM POSTS;";
-
-    private static final  String [] queriesFlatSort = {
-            "SELECT * FROM posts WHERE thread = ? " +
-            "ORDER BY created ASC, id ASC LIMIT ?; ",
-
-            "SELECT * FROM posts WHERE thread = ? " +
-            "ORDER BY created DESC, id DESC LIMIT ?; ",
-
-            "SELECT * FROM posts WHERE thread = ? AND id > ? " +
-            "ORDER BY created ASC, id ASC LIMIT ?; ",
-
-            "SELECT * FROM posts WHERE thread = ? AND id < ? " +
-            "ORDER BY created DESC, id DESC LIMIT ?; "
-    };
-
-    private static final String [] queriesTreeSort = {
-            "SELECT * FROM posts p " +
-            "WHERE thread = ? ORDER BY post_path ASC LIMIT ?; ",
-
-            "SELECT * FROM posts p " +
-            "WHERE thread = ? ORDER BY post_path DESC LIMIT ?; ",
-
-            "SELECT * FROM posts p " +
-            "WHERE thread = ? AND post_path > (SELECT post_path FROM posts where id = ?) " +
-            "ORDER BY post_path ASC LIMIT ?; ",
-
-            "SELECT * FROM posts p " +
-            "WHERE thread = ? AND post_path < (SELECT post_path FROM posts where id = ?) " +
-            "ORDER BY post_path DESC LIMIT ?; ",
-    };
-
-    private static final String [] queryParentTreeSort = {
-            "SELECT * FROM posts p WHERE post_path[1] IN " +
-            "(SELECT id FROM posts WHERE thread = ? AND parent = 0 ORDER BY id ASC LIMIT ?) " +
-            "ORDER BY post_path[1] ASC, post_path; ",
-
-            "SELECT * FROM posts p WHERE post_path[1] IN " +
-            "(SELECT id FROM posts WHERE thread = ? AND parent = 0 ORDER BY id DESC LIMIT ?) " +
-            "ORDER BY post_path[1] DESC, post_path; ",
-
-            "SELECT * FROM posts p WHERE post_path[1] IN " +
-            "(SELECT id FROM posts WHERE thread = ? AND parent = 0 AND post_path[1] > (SELECT post_path[1] FROM posts WHERE id = ?) ORDER BY id ASC LIMIT ?) " +
-            "ORDER BY post_path[1] ASC, post_path; ",
-
-            "SELECT * FROM posts p WHERE post_path[1] IN " +
-            "(SELECT id FROM posts WHERE thread = ? AND parent = 0 AND post_path[1] < (SELECT post_path[1] FROM posts WHERE id = ?) ORDER BY id DESC LIMIT ?) " +
-            "ORDER BY post_path[1] DESC, post_path; "
-    };
-
-    private static Map<String, String[]> queries;
-
     @Autowired
     public PostService(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
-        queries = new HashMap<>();
-        queries.put("flat", queriesFlatSort);
-        queries.put("tree", queriesTreeSort);
-        queries.put("parent_tree", queryParentTreeSort);
     }
 
     public Integer getCount() {
-        return jdbc.queryForObject(sqlCountPosts, Integer.class);
+        try {
+            return jdbc.queryForObject(Queries.selectPostsCount, Integer.class);
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public void truncateTable() {
-        final String sql = "TRUNCATE TABLE posts CASCADE ;";
-        jdbc.execute(sql);
+        try {
+            jdbc.execute(Queries.truncatePosts);
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+        }
     }
 
-    // Done
     public Post getPostById(Integer id) {
-        final String sql = "SELECT * FROM posts WHERE id = ?;";
         Post post = null;
         try {
-            post = jdbc.queryForObject(sql, new postMapper(), id);
+            post = jdbc.queryForObject(Queries.selectPostById, new postMapper(), id);
         } catch (DataAccessException e) {
             return null;
         }
         return post;
     }
 
-    // Done
     public Post updatePost(PostUpdate postUpdate, Integer id) {
         Post oldPost = getPostById(id);
 
@@ -118,139 +71,136 @@ public class PostService {
             return oldPost;
         }
 
-        final String sql = "UPDATE posts SET isEdited = true, message = ? WHERE id = ? RETURNING *;";
-
         Post post = null;
-
         try {
-            post = jdbc.queryForObject(sql, new postMapper(), postUpdate.getMessage(), id);
+            post = jdbc.queryForObject(Queries.updatePost, new postMapper(), postUpdate.getMessage(), id);
         } catch (DataAccessException e) {
             return null;
         }
-
         return post;
     }
 
-    // Done
     public List<Post> addPostList(List<Post> posts) {
-        final String sqlUpdateForum = "UPDATE forum SET posts = posts + ? WHERE slug = ?";
-        final String sqlSeq =  "SELECT nextval('posts_id_seq');";
-        final String sqlTime = "SELECT current_timestamp ;";
-        final String sqlInsertUserForum = "INSERT INTO users_forum(forum, author) VALUES (?, ?); ";
-        final String sqlInsertPostNoPostPath =  "INSERT INTO posts(id, parent, author, message, thread, forum, created, post_path) " +
-                                                "VALUES(?,?,?,?,?,?,?, array_append(?, ?) );";
-        final String sqlSelectPostPath = "SELECT post_path FROM posts WHERE id = ?";
-        final String sqlSelectUserForum = "SELECT COUNT(*) FROM users_forum " +
-                "WHERE lower(author) = lower(?) AND lower(forum) = lower(?) " +
-                "LIMIT 1;";
 
-        List<Post> newPosts = new ArrayList<>();
-        Map<String, Integer> updatedForums = new HashMap<>();
-
-        final Timestamp curr_time = jdbc.queryForObject(sqlTime, Timestamp.class);
+        final Timestamp curr_time = jdbc.queryForObject(Queries.selectCurrentTime, Timestamp.class);
         final String time = curr_time.toInstant().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
         try {
-            jdbc.batchUpdate(sqlInsertPostNoPostPath, new BatchPreparedStatementSetter() {
-
-                @Override
-                public void setValues(PreparedStatement preparedStatement, int i) throws SQLException {
-                    Post post = posts.get(i);
-                    Integer seq = jdbc.queryForObject(sqlSeq, Integer.class);
-                    Array post_path;
-                    try {
-                        post_path = jdbc.queryForObject(sqlSelectPostPath, Array.class, post.getParent());
-                    } catch (DataAccessException e) {
-                        post_path = null;
-                    }
-                    post.setId(seq);
-                    post.setCreated(time);
-                    preparedStatement.setInt(1, post.getId());
-                    preparedStatement.setInt(2, post.getParent());
-                    preparedStatement.setString(3, post.getAuthor());
-                    preparedStatement.setString(4, post.getMessage());
-                    preparedStatement.setInt(5, post.getThread());
-                    preparedStatement.setString(6, post.getForum());
-                    preparedStatement.setTimestamp(7, curr_time);
-                    preparedStatement.setArray(8, post_path);
-                    preparedStatement.setInt(9, post.getId());
-
-
-                    if (!updatedForums.containsKey(post.getForum())) {
-                        updatedForums.put(post.getForum(), 1);
-                    } else {
-                        updatedForums.put(post.getForum(), updatedForums.get(post.getForum()) + 1);
-                    }
-
-                    Integer isUserExist = jdbc.queryForObject(sqlSelectUserForum, Integer.class, post.getAuthor(), post.getForum());
-                    if (isUserExist == 0) {
-                        jdbc.update(sqlInsertUserForum, post.getForum(), post.getAuthor());
-                    }
-
-                    newPosts.add(post);
-                }
-
-                @Override
-                public int getBatchSize() {
-                    return posts.size();
-                }
-            });
+            jdbc.batchUpdate(Queries.insertPost, new postBatchPreparedStatementSetter(posts, time, curr_time));
+            jdbc.batchUpdate(Queries.insertToUserForum, new forumUserBatchPreparedStatementSetter(posts));
         } catch (DataAccessException e) {
+            e.printStackTrace();
             return null;
         }
-
-//        List<Map.Entry<String, Integer>> updatedForumsList = new ArrayList<>();
-//
-//        for (Map.Entry<String, Integer> entry: updatedForums.entrySet()) {
-//            updatedForumsList.add(entry);
-//        }
-
-        List<Map.Entry<String, Integer>> updatedForumsList = new ArrayList<>(updatedForums.entrySet());
-
-//        for (Map.Entry<String, Integer> entry: updatedForums.entrySet()) {
-//            updatedForumsList.add(entry);
-//        }
 
         try {
-            jdbc.batchUpdate(sqlUpdateForum, new BatchPreparedStatementSetter() {
-                @Override
-                public void setValues(PreparedStatement preparedStatement, int i) throws SQLException {
-                    Map.Entry entry = updatedForumsList.get(i);
-                    preparedStatement.setInt(1, (Integer) entry.getValue());
-                    preparedStatement.setString(2, (String) entry.getKey());
-                }
-
-                @Override
-                public int getBatchSize() {
-                    return updatedForumsList.size();
-                }
-            });
+            jdbc.update(Queries.updateForumPosts, posts.size(), posts.get(0).getForum());
         } catch (DataAccessException e) {
+            e.printStackTrace();
             return null;
         }
 
-        return newPosts;
+        return posts;
     }
 
-    // Done
-    public List<Post> getPostList(Integer id, Integer limit, Integer since, String sort, Boolean desc) {
-        Integer number = 0;
-
-        if (since == null && !desc) number = 0;
-        if (since == null && desc)  number = 1;
-        if (since != null && !desc) number = 2;
-        if (since != null && desc)  number = 3;
-
-        String sql = queries.get(sort)[number];
-
-        List<Post> postList;
+    public List<Post> execSortQuery(String sql, Integer id, Integer limit, Integer since) {
+        List<Post> postList = null;
         try {
-            if (since == null)
+            if (since == null) {
                 postList = jdbc.query(sql, new postMapper(), id, limit);
-            else
+            } else {
                 postList = jdbc.query(sql, new postMapper(), id, since, limit);
+            }
         } catch (DataAccessException e) {
             return null;
+        }
+        return postList;
+    }
+
+    public List<Post> flatSort(Integer id, Integer limit, Integer since, Boolean desc) {
+        String sql = null;
+        if (since == null && !desc) { sql = Queries.flatSort; }
+        if (since == null && desc)  { sql = Queries.flatSortDesc; }
+        if (since != null && !desc) { sql = Queries.flatSortSince; }
+        if (since != null && desc)  { sql = Queries.flatSortDescSince; }
+
+        List<Post> postList = execSortQuery(sql, id, limit, since);
+        return postList;
+    }
+
+    public List<Post> treeSort(Integer id, Integer limit, Integer since, Boolean desc) {
+        String sql = null;
+        if (since == null && !desc) { sql = Queries.treeSort; }
+        if (since == null && desc)  { sql = Queries.treeSortDesc; }
+        if (since != null && !desc) { sql = Queries.treeSortSince; }
+        if (since != null && desc)  { sql = Queries.treeSortDescSince; }
+
+        List<Post> postList = execSortQuery(sql, id, limit, since);
+        return postList;
+    }
+
+    public List<Post> parentTreeSort (Integer id, Integer limit, Integer since, Boolean desc) {
+
+        StringBuilder sqlBuilderParent = new StringBuilder(Queries.parentTreeGetParents);
+        String order = (desc) ? "DESC ": "ASC ";
+
+        List<Integer> parents = null;
+        try {
+            if (since != null) {
+                String sign = (!desc) ? "> ": "< ";
+                sqlBuilderParent.append("AND post_path[1] " + sign);
+                Integer postPathSince = jdbc.queryForObject(Queries.parentTreeGetParentsSince, Integer.class, since);
+                sqlBuilderParent.append(postPathSince.toString()+ " ");
+            }
+            sqlBuilderParent.append("ORDER BY id " + order + "LIMIT ?;");
+            String sqlParent = sqlBuilderParent.toString();
+            parents = jdbc.queryForList(sqlParent, Integer.class, id, limit);
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+        if (parents.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        String parentString = parents.toString();
+        StringBuilder parentStringBuilder = new StringBuilder(parentString);
+        parentStringBuilder.deleteCharAt(0);
+        parentStringBuilder.deleteCharAt(parentStringBuilder.length() - 1);
+        parentStringBuilder.replace(0, 0, "(") ;
+        parentStringBuilder.replace(parentString.length() - 1, parentString.length() - 1, ")" );
+        parentString = parentStringBuilder.toString();
+
+        List<Post> resultPosts = null;
+        try {
+            StringBuilder sqlBuilder = new StringBuilder(Queries.parentTree);
+            sqlBuilder.append(parentString + " ");
+            sqlBuilder.append("ORDER BY post_path[1] " + order + ", post_path;");
+            String sql = sqlBuilder.toString();
+            resultPosts = jdbc.query(sql, new postMapper());
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+        return resultPosts;
+    }
+
+    public List<Post> getPostList(Integer id, Integer limit, Integer since, String sort, Boolean desc) {
+        List<Post> postList = null;
+        switch(sort) {
+            case("flat"):
+                postList = flatSort(id, limit, since, desc);
+                break;
+            case("tree"):
+                postList = treeSort(id, limit, since, desc);
+                break;
+            case("parent_tree"):
+                postList = parentTreeSort(id, limit, since, desc);
+                break;
+            default:
+                break;
         }
         return postList;
     }
@@ -268,5 +218,64 @@ public class PostService {
             final Integer thread = rs.getInt("thread");
             return new Post(author, created, forum, id, isEdited, message, parent, thread);
         }
+    }
+
+    private final class postBatchPreparedStatementSetter implements BatchPreparedStatementSetter {
+        List<Post> posts;
+        String time;
+        Timestamp curr_time;
+
+        public postBatchPreparedStatementSetter(List<Post> posts, String time, Timestamp curr_time) {
+            this.posts = posts;
+            this.time = time;
+            this.curr_time = curr_time;
+        }
+
+        @Override
+        public void setValues(PreparedStatement preparedStatement, int i) throws SQLException {
+            Post post = posts.get(i);
+            Integer seq = null;
+            try {
+                seq = jdbc.queryForObject(Queries.selectPostSeq, Integer.class);
+            } catch (DataAccessException e) {
+                e.printStackTrace();
+            }
+            post.setId(seq);
+            post.setCreated(time);
+            preparedStatement.setInt(1, post.getId());
+            preparedStatement.setInt(2, post.getParent());
+            preparedStatement.setString(3, post.getAuthor());
+            preparedStatement.setString(4, post.getMessage());
+            preparedStatement.setInt(5, post.getThread());
+            preparedStatement.setString(6, post.getForum());
+            preparedStatement.setTimestamp(7, curr_time);
+            preparedStatement.setInt(8, post.getParent());
+            preparedStatement.setInt(9, post.getId());
+        }
+        @Override
+        public int getBatchSize() {
+            return posts.size();
+        }
+
+    }
+
+    private final class forumUserBatchPreparedStatementSetter implements BatchPreparedStatementSetter {
+        List<Post> posts;
+
+        public forumUserBatchPreparedStatementSetter(List<Post> posts) {
+            this.posts = posts;
+        }
+
+        @Override
+        public void setValues(PreparedStatement preparedStatement, int i) throws SQLException {
+            Post post = posts.get(i);
+            preparedStatement.setString(1, post.getForum());
+            preparedStatement.setString(2, post.getAuthor());
+        }
+        @Override
+        public int getBatchSize() {
+            return posts.size();
+        }
+
     }
 }

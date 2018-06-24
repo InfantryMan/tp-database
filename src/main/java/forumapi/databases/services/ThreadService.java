@@ -1,5 +1,6 @@
 package forumapi.databases.services;
 
+import forumapi.databases.models.Queries;
 import forumapi.databases.models.Thread;
 import forumapi.databases.models.Vote;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +25,6 @@ import java.util.List;
 @Transactional
 public class ThreadService {
     private final JdbcTemplate jdbc;
-    private final String sqlCountThreads = "SELECT COUNT(id) FROM threads;";
 
     @Autowired
     public ThreadService(JdbcTemplate jdbc) {
@@ -32,47 +32,45 @@ public class ThreadService {
     }
 
     public Integer getCount() {
-        return jdbc.queryForObject(sqlCountThreads, Integer.class);
+        try {
+            return jdbc.queryForObject(Queries.selectThreadsCount, Integer.class);
+        } catch (DataAccessException e) {
+            return null;
+        }
     }
 
     public void truncateTable() {
-        final String sql = "TRUNCATE TABLE threads CASCADE ;";
-        jdbc.execute(sql);
+        try {
+            jdbc.execute(Queries.truncateThreads);
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+        }
     }
 
-    // Done
     public Thread addThread(Thread thread) {
         Thread newThread = null;
-        final String sqlInsertThread = "INSERT INTO threads (author, forum, message, title) VALUES (?, ?, ?, ?) RETURNING id;";
-        final String sqlUpdateThreadsInForum = "UPDATE forum SET threads = threads + 1 WHERE slug = ?;";
-        final String sqlUpdateCreatedInThread = "UPDATE threads SET created = ? WHERE id = ? ;";
-        final String sqlUpdateSlugInThread = "UPDATE threads SET slug = ? WHERE id = ?" ;
-        final String sqlSelectUserForum = "SELECT COUNT(*) FROM users_forum " +
-                "WHERE lower(author) = lower(?) AND lower(forum) = lower(?) " +
-                "LIMIT 1; ";
-        final String sqlInsertUserForum = "INSERT INTO users_forum(forum, author) VALUES (?, ?); ";
         try {
-            Integer id = jdbc.queryForObject(sqlInsertThread, Integer.class, thread.getAuthor(), thread.getForum(), thread.getMessage(), thread.getTitle());
-            jdbc.update(sqlUpdateThreadsInForum, thread.getForum());
-            Integer isUserForum = jdbc.queryForObject(sqlSelectUserForum, Integer.class, thread.getAuthor(), thread.getForum());
+            Integer id = jdbc.queryForObject(Queries.insertThread, Integer.class, thread.getAuthor(), thread.getForum(), thread.getMessage(), thread.getTitle());
+            jdbc.update(Queries.updateForumThreads, thread.getForum());
+            Integer isUserForum = jdbc.queryForObject(Queries.selectUserForumCount, Integer.class, thread.getAuthor(), thread.getForum());
             if (isUserForum == 0) {
-                jdbc.update(sqlInsertUserForum, thread.getForum(), thread.getAuthor());
+                jdbc.update(Queries.insertToUserForum, thread.getForum(), thread.getAuthor());
             }
             if (thread.getCreated() != null) {
                 String str = ZonedDateTime.parse(thread.getCreated()).format(DateTimeFormatter.ISO_INSTANT);
-                jdbc.update(sqlUpdateCreatedInThread, new Timestamp(ZonedDateTime.parse(str).toLocalDateTime().toInstant(ZoneOffset.UTC).toEpochMilli()), id );
+                jdbc.update(Queries.updateThreadCreated, new Timestamp(ZonedDateTime.parse(str).toLocalDateTime().toInstant(ZoneOffset.UTC).toEpochMilli()), id );
             }
             if(thread.getSlug() != null) {
-                jdbc.update(sqlUpdateSlugInThread, thread.getSlug(), id);
+                jdbc.update(Queries.updateThreadSlug, thread.getSlug(), id);
             }
             newThread = getThreadById(id);
         } catch (DataAccessException e) {
+            e.printStackTrace();
             return null;
         }
         return newThread;
     }
 
-    // Done
     public Thread getThreadBySlugOrId(String slug_or_id) {
         if (slug_or_id.matches("[-+]?[0-9]+(\\.[0-9]+)?")) {
             return getThreadById(Integer.valueOf(slug_or_id));
@@ -80,63 +78,48 @@ public class ThreadService {
         return getThreadBySlug(slug_or_id);
     }
 
-    // Done
     public Thread getThreadBySlug(String slug) {
-        final String sql = "SELECT * FROM threads WHERE LOWER(slug) = LOWER(?);";
         Thread thread = null;
         try {
-            thread = jdbc.queryForObject(sql, new threadMapper(), slug);
+            thread = jdbc.queryForObject(Queries.selectThreadBySlug, new threadMapper(), slug);
         } catch (DataAccessException e) {
             return null;
         }
         return thread;
     }
 
-    // Done
     public Thread getThreadById(Integer id) {
-        final String sql = "SELECT * FROM threads WHERE id = ?;";
         Thread thread = null;
         try {
-            thread = jdbc.queryForObject(sql, new threadMapper(), id);
+            thread = jdbc.queryForObject(Queries.selectThreadById, new threadMapper(), id);
         } catch (DataAccessException e) {
             return null;
         }
         return thread;
     }
 
-    // Done
     public Thread getDuplicateThread(Thread thread) {
-        final String sql = "SELECT * FROM threads WHERE LOWER(slug) = LOWER(?);";
         Thread dupThread = null;
         try {
-            dupThread = jdbc.queryForObject(sql, new threadMapper(), thread.getSlug());
+            dupThread = jdbc.queryForObject(Queries.selectThreadByForumSlug, new threadMapper(), thread.getSlug());
         } catch (DataAccessException e) {
             return null;
         }
         return dupThread;
     }
 
-    // Done
     public List<Thread> getThreadsByForumSlug(String forumSlug, Integer limit, String since, Boolean desc) {
-        final String [] queries = {
-                "SELECT * FROM threads WHERE LOWER(forum) = LOWER(?) ORDER BY created ASC LIMIT ?",
-                "SELECT * FROM threads WHERE LOWER(forum) = LOWER(?) ORDER BY created DESC LIMIT ?",
-                "SELECT * FROM threads WHERE LOWER(forum) = LOWER(?) AND created >= ? ORDER BY created ASC LIMIT ?",
-                "SELECT * FROM threads WHERE LOWER(forum) = LOWER(?) AND created <= ? ORDER BY created DESC LIMIT ?"
-        };
-
         Timestamp time = null;
-
         if (since != null) {
             final String str = ZonedDateTime.parse(since).format(DateTimeFormatter.ISO_INSTANT);
             time = new Timestamp(ZonedDateTime.parse(str).toLocalDateTime().toInstant(ZoneOffset.UTC).toEpochMilli());
         }
 
         String sql = null;
-        if (since == null && !desc) sql = queries[0];
-        if (since == null && desc)  sql = queries[1];
-        if (since != null && !desc) sql = queries[2];
-        if (since != null && desc)  sql = queries[3];
+        if (since == null && !desc) sql = Queries.selectThreadByForumSlugAsc;
+        if (since == null && desc)  sql = Queries.selectThreadByForumSlugDesc;
+        if (since != null && !desc) sql = Queries.selectThreadByForumSlugAscSince;
+        if (since != null && desc)  sql = Queries.selectThreadByForumSlugDescSince;
 
         List<Thread> threads = null;
         try {
@@ -150,16 +133,14 @@ public class ThreadService {
         return threads;
     }
 
-    // Done
     public Thread changeVote(Thread thread, Vote vote) {
-        Thread returnThread = null;
-        String sqlSelect = "SELECT voice FROM votes WHERE thread = ? AND nickname = ?;";
+
         Integer voiceDB;
         Integer voiceClient = vote.getVoice();
         Integer totalVoice = 0;
 
         try {
-            voiceDB = jdbc.queryForObject(sqlSelect, Integer.class, thread.getId(), vote.getNickname());
+            voiceDB = jdbc.queryForObject(Queries.selectVote, Integer.class, thread.getId(), vote.getNickname());
         } catch (DataAccessException e) {
             voiceDB = 0;
         }
@@ -184,42 +165,33 @@ public class ThreadService {
             totalVoice = -1;
         }
 
-        String sqlUpdateThread = "UPDATE threads SET votes = votes + ? WHERE id = ?;";
         try {
-            jdbc.update(sqlUpdateThread, totalVoice, thread.getId());
+            jdbc.update(Queries.updateThreadVote, totalVoice, thread.getId());
         } catch (DataAccessException e) {
             return null;
         }
 
         if (voiceDB == 0) {
-            String sqlInsert = "INSERT INTO votes VALUES (?, ?, ?);";
             try {
-                jdbc.update(sqlInsert, vote.getNickname(), voiceClient, thread.getId());
+                jdbc.update(Queries.insertVote, vote.getNickname(), voiceClient, thread.getId());
             } catch (DataAccessException e) {
                 return null;
             }
         }
 
         if (totalVoice == 2 || totalVoice == -2) {
-            String sqlUpdate = "UPDATE votes SET voice = ? WHERE thread = ? AND nickname = ?;";
             try {
-                jdbc.update(sqlUpdate, voiceClient, thread.getId(), vote.getNickname());
+                jdbc.update(Queries.updateVote, voiceClient, thread.getId(), vote.getNickname());
             } catch (DataAccessException e) {
                 return null;
             }
         }
 
-        String sqlSelectThread = "SELECT * FROM threads WHERE id = ?;";
-        try {
-            returnThread = jdbc.queryForObject(sqlSelectThread, new threadMapper(), thread.getId());
-        } catch (DataAccessException e) {
-            return null;
-        }
+        Thread returnThread = getThreadById(thread.getId());
 
         return returnThread;
     }
 
-    // Done
     public Thread updateThread(Thread thread) {
         StringBuilder sqlUpdateBuilder = new StringBuilder("UPDATE threads SET ");
 

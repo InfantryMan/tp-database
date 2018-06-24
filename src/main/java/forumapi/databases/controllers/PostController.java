@@ -13,6 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 
 
@@ -32,10 +35,10 @@ public class PostController {
         this.threadService = threadService;
     }
 
-    // Done
     @RequestMapping(path = "/{id}/details", method = RequestMethod.POST)
     public ResponseEntity updatePost(@PathVariable(name = "id") Integer id,
                                      @RequestBody PostUpdate bodyPostUpdate) {
+
         Post post = postService.updatePost(bodyPostUpdate, id);
 
         if (post == null) {
@@ -45,7 +48,6 @@ public class PostController {
         return ResponseEntity.status(HttpStatus.OK).body(post);
     }
 
-    // Done
     @RequestMapping(path = "/{id}/details", method = RequestMethod.GET)
     public ResponseEntity detailsPost(@PathVariable(name = "id") Integer id,
                                       @RequestParam(name = "related", required = false) List<String> related) {

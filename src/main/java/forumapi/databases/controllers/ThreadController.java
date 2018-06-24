@@ -14,6 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +36,6 @@ public class ThreadController {
         this.postService = postService;
     }
 
-    // Done
     @RequestMapping(path = "/{slug_or_id}/create", method = RequestMethod.POST)
     public ResponseEntity createPost(@PathVariable("slug_or_id") String slug_or_id,
                                      @RequestBody List<Post> bodyPostList) {
@@ -77,9 +79,9 @@ public class ThreadController {
         return ResponseEntity.status(HttpStatus.CREATED).body(newPosts);
     }
 
-    // Done
     @RequestMapping(path = "/{slug_or_id}/details", method = RequestMethod.GET)
     public ResponseEntity detailsThread(@PathVariable("slug_or_id") String slug_or_id) {
+
 
         Thread thread = threadService.getThreadBySlugOrId(slug_or_id);
 
@@ -90,7 +92,6 @@ public class ThreadController {
         return ResponseEntity.status(HttpStatus.OK).body(thread);
     }
 
-    // Done
     @RequestMapping(path = "/{slug_or_id}/posts", method = RequestMethod.GET)
     public ResponseEntity getPosts(@PathVariable("slug_or_id") String slug_or_id,
                                    @RequestParam(value = "limit", required = false, defaultValue = "100") Integer limit,
@@ -109,7 +110,6 @@ public class ThreadController {
         return ResponseEntity.status(HttpStatus.OK).body(postList);
     }
 
-    // Done
     @RequestMapping(path = "/{slug_or_id}/vote", method = RequestMethod.POST)
     public ResponseEntity changeVote(@PathVariable("slug_or_id") String slug_or_id,
                                      @RequestBody Vote bodyVote) {

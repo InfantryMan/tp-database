@@ -11,6 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+
 @RestController
 @RequestMapping(path = "/api/service")
 public class ServiceController {
@@ -18,18 +22,16 @@ public class ServiceController {
     final private ApplicationService serviceService;
 
     @Autowired
-    public ServiceController(ApplicationService serviceService){
+    public ServiceController(ApplicationService serviceService) {
         this.serviceService = serviceService;
     }
 
-    // Done
     @RequestMapping(path = "/clear", method = RequestMethod.POST)
-    public ResponseEntity clear(){
+    public ResponseEntity clear() {
         serviceService.truncateTables();
         return ResponseEntity.status(HttpStatus.OK).body(new Message(MessageStates.CLEAR_SUCCESSFUL.getMessage()));
     }
 
-    // Done
     @RequestMapping(path = "/status", method = RequestMethod.GET)
     public ResponseEntity getStatus(){
         return ResponseEntity.ok(serviceService.getStatus());

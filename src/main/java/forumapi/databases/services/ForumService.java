@@ -1,6 +1,7 @@
 package forumapi.databases.services;
 
 import forumapi.databases.models.Forum;
+import forumapi.databases.models.Queries;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -16,7 +17,6 @@ import java.sql.SQLException;
 @Transactional
 public class ForumService {
     private final JdbcTemplate jdbc;
-    private final String sqlCountForums = "SELECT COUNT (slug) FROM forum;";
 
     @Autowired
     public ForumService(JdbcTemplate jdbc) {
@@ -24,18 +24,25 @@ public class ForumService {
     }
 
     public Integer getCount() {
-        return jdbc.queryForObject(sqlCountForums, Integer.class);
+        try {
+            return jdbc.queryForObject(Queries.selectForumsCount, Integer.class);
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public void truncateTable() {
-        String sql = "TRUNCATE TABLE forum CASCADE ;";
-        jdbc.execute(sql);
+        try {
+            jdbc.execute(Queries.truncateForums);
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     public void addForum(Forum forum) {
-        String sql = "INSERT INTO forum (admin, title, slug) VALUES (?, ?, ?)";
         try {
-            jdbc.update(sql,
+            jdbc.update(Queries.insertForum,
                     ps -> {
                         ps.setString(1, forum.getUser());
                         ps.setString(2, forum.getTitle());
@@ -46,16 +53,13 @@ public class ForumService {
         }
     }
 
-    // Done
     public Forum getForumBySlug(String slug) {
-        final String sql = "SELECT * FROM forum WHERE LOWER(slug) = LOWER(?);";
         Forum forum = null;
         try {
-            forum = jdbc.queryForObject(sql, new forumMapper(), slug);
-        } catch(EmptyResultDataAccessException e) {
+            forum = jdbc.queryForObject(Queries.selectForum, new forumMapper(), slug);
+        } catch (EmptyResultDataAccessException e) {
             return null;
         } catch (DataAccessException e) {
-            e.printStackTrace();
             return null;
         }
         return forum;

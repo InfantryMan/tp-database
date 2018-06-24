@@ -22,7 +22,6 @@ public class ForumContoller {
     private final UserService userService;
     private final ThreadService threadService;
 
-
     @Autowired
     public ForumContoller(ForumService forumService, UserService userService, ThreadService threadService) {
         this.forumService = forumService;
@@ -30,7 +29,6 @@ public class ForumContoller {
         this.threadService = threadService;
     }
 
-    // Done
     @RequestMapping(path="/create", method = RequestMethod.POST)
     public ResponseEntity createForum(@RequestBody Forum forumBody) {
 
@@ -51,7 +49,6 @@ public class ForumContoller {
         return ResponseEntity.status(HttpStatus.CREATED).body(forum);
     }
 
-    // Done
     @RequestMapping(path="{slug}/details", method = RequestMethod.GET)
     public ResponseEntity showForum(@PathVariable("slug") String slug) {
         Forum forum = forumService.getForumBySlug(slug);
@@ -61,10 +58,8 @@ public class ForumContoller {
         return ResponseEntity.status(HttpStatus.OK).body(forum);
     }
 
-    // Done
     @RequestMapping(path="/{slug}/create", method = RequestMethod.POST)
     public ResponseEntity createThread(@PathVariable("slug") String forumSlug, @RequestBody Thread threadBody) {
-
         User user = userService.getUserByNickName(threadBody.getAuthor());
         if (user == null)
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_NOT_FOUND.getMessage() + threadBody.getAuthor()));
@@ -89,7 +84,6 @@ public class ForumContoller {
         return ResponseEntity.status(HttpStatus.CREATED).body(newThread);
     }
 
-    // Done
     @RequestMapping(path="/{slug}/threads", method = RequestMethod.GET)
     public ResponseEntity showThreads(@PathVariable("slug") String forumSlug,
                                       @RequestParam(value = "limit", required = false) Integer limit,
@@ -103,7 +97,6 @@ public class ForumContoller {
         return ResponseEntity.status(HttpStatus.OK).body(threadList);
     }
 
-    // Done
     @RequestMapping(path="/{slug}/users", method = RequestMethod.GET)
     public ResponseEntity showUsers(@PathVariable("slug") String forumSlug,
                                     @RequestParam(value = "limit", required = false) Integer limit,

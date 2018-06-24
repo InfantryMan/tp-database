@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE IF NOT EXISTS public.users (
-  nickname CITEXT UNIQUE NOT NULL PRIMARY KEY,
+  nickname CITEXT PRIMARY KEY,
   email CITEXT UNIQUE NOT NULL,
   fullname VARCHAR(128) NOT NULL,
   about TEXT NOT NULL
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 
 CREATE TABLE IF NOT EXISTS public.forum (
   posts BIGINT NOT NULL DEFAULT 0,
-  slug CITEXT UNIQUE NOT NULL PRIMARY KEY,
+  slug CITEXT PRIMARY KEY,
   threads INTEGER NOT NULL DEFAULT 0,
   title VARCHAR(128) NOT NULL,
   admin CITEXT NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.threads (
   author CITEXT NOT NULL,
   created TIMESTAMP NOT NULL DEFAULT current_timestamp,
   forum CITEXT NOT NULL,
-  id BIGSERIAL UNIQUE NOT NULL PRIMARY KEY,
+  id BIGSERIAL PRIMARY KEY,
   message TEXT NOT NULL,
   slug CITEXT UNIQUE,
   title VARCHAR(128) NOT NULL,
@@ -45,26 +45,17 @@ CREATE TABLE IF NOT EXISTS public.posts (
 );
 
 CREATE TABLE IF NOT EXISTS public.users_forum (
-  author CITEXT NOT NULL,
-  forum CITEXT NOT NULL
+  author CITEXT,
+  forum CITEXT,
+  UNIQUE(author, forum)
 );
 
 CREATE TABLE IF NOT EXISTS votes (
   nickname CITEXT NOT NULL,
   voice BIGINT NOT NULL,
-  thread BIGSERIAL NOT NULL,
+  thread BIGINT NOT NULL,
   FOREIGN KEY (nickname) REFERENCES  users(nickname),
-  FOREIGN KEY (thread) REFERENCES threads(id)
+  FOREIGN KEY (thread) REFERENCES threads(id),
+  PRIMARY KEY (nickname, voice, thread)
 );
 
-CREATE OR REPLACE FUNCTION insert_users_forum(insert_forum CITEXT, insert_author CITEXT) RETURNS void AS '
-DECLARE
-  have INT;
-BEGIN
-  SELECT COUNT(author) INTO have FROM users_forum
-  WHERE lower(forum) = lower(insert_forum) AND lower(author) = lower(insert_author) LIMIT 1;
-  IF have = 0 THEN
-    INSERT INTO users_forum(forum, author) VALUES(insert_forum, insert_author);
-  END IF;
-END;
-' LANGUAGE plpgsql;

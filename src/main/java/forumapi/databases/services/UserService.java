@@ -1,9 +1,11 @@
 package forumapi.databases.services;
 
+import forumapi.databases.models.Queries;
 import forumapi.databases.models.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -18,7 +21,7 @@ import java.util.List;
 public class UserService {
 
     private final JdbcTemplate jdbc;
-    final String sqlCountUsers = "SELECT COUNT(nickname) FROM users ;";
+
 
     @Autowired
     public UserService(JdbcTemplate jdbc) {
@@ -26,60 +29,47 @@ public class UserService {
     }
 
     public Integer getCount() {
-        return jdbc.queryForObject(sqlCountUsers, Integer.class);
+        try {
+            return jdbc.queryForObject(Queries.selectUsersCount, Integer.class);
+        } catch (DataAccessException e) {
+            return null;
+        }
     }
 
     public void truncateTable() {
-        String sql = "TRUNCATE TABLE users, users_forum CASCADE ;";
-        jdbc.execute(sql);
+        try {
+            jdbc.execute(Queries.truncateUsers);
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+        }
     }
 
-    // Done
     public User addUser(User insertUser) {
-        final String sql = "INSERT INTO users (nickname, email, fullname, about) VALUES (?, ?, ?, ?) RETURNING *;";
         User user = null;
         try {
-            user = jdbc.queryForObject(sql, new userMapper(),
+            user = jdbc.queryForObject(Queries.insertUser, new userMapper(),
                     insertUser.getNickname(), insertUser.getEmail(),
                     insertUser.getFullname(), insertUser.getAbout());
-
-        } catch (DuplicateKeyException e) {
+        }  catch (EmptyResultDataAccessException e) {
             return null;
         }
         return user;
     }
 
-    // Done
     public List<User> getDubUsers(User user) {
-        final String sql = "SELECT * FROM users WHERE lower(nickname) = lower(?) OR lower(email) = lower(?);";
-        final String nickName = user.getNickname();
-        final String email = user.getEmail();
         List<User> dubUsers = null;
         try {
-            dubUsers = jdbc.query(sql, new userMapper(), nickName, email);
+            dubUsers = jdbc.query(Queries.selectDubUsers, new userMapper(), user.getNickname(), user.getEmail());
         } catch (DataAccessException e) {
             return null;
         }
         return dubUsers;
     }
 
-    //Done
     public User getUserByNickName(String userNickName) {
-        final String sql = "SELECT * FROM users WHERE lower(nickname) = lower(?);";
         User user = null;
         try {
-            user = jdbc.queryForObject(sql, new userMapper(), userNickName);
-        } catch (DataAccessException e) {
-            return null;
-        }
-        return user;
-    }
-
-    public User getUserByEmail(String email) {
-        final String sql = "SELECT * FROM users WHERE lower(email) = lower(?);";
-        User user = null;
-        try {
-            user = jdbc.queryForObject(sql, new userMapper(), email);
+            user = jdbc.queryForObject(Queries.selectUser, new userMapper(), userNickName);
         } catch (DataAccessException e) {
             return null;
         }
@@ -110,7 +100,6 @@ public class UserService {
         sql.deleteCharAt(sql.toString().length() - 2);
         sql.append("WHERE lower(nickname) = lower(\'" + userNickName + "\'); ");
 
-        User returnUser = null;
         try {
             jdbc.update(sql.toString());
         } catch (DuplicateKeyException e) {
@@ -121,71 +110,56 @@ public class UserService {
         return 0;
     }
 
-    // Done
+    public String listToString(List<String> usersNicknames) {
+        StringBuilder nicknamesStringBuilder = new StringBuilder("(");
+        for (String userName: usersNicknames) {
+            nicknamesStringBuilder.append("\'");
+            nicknamesStringBuilder.append(userName);
+            nicknamesStringBuilder.append("\', ");
+        }
+        nicknamesStringBuilder.replace(nicknamesStringBuilder.length() - 2, nicknamesStringBuilder.length() - 1, ")");
+        return nicknamesStringBuilder.toString();
+    }
+
     public List<User> getUsersByForumSlug(String forumSlug, Integer limit, String since, Boolean desc) {
-        final String [] queries = {
-//                "SELECT * FROM users u  JOIN (SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?)) uf " +
-//                "ON u.nickname = uf.author " +
-//                "ORDER BY LOWER(nickname COLLATE \"C\") ASC " +
-//                "LIMIT ?; ",
-//
-//                "SELECT * FROM users u JOIN (SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?)) uf " +
-//                "ON u.nickname = uf.author " +
-//                "ORDER BY LOWER(nickname COLLATE \"C\") DESC " +
-//                "LIMIT ?; ",
-//
-//                "SELECT * FROM users u JOIN ( SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?) AND LOWER(author COLLATE \"C\") > LOWER(?) ) uf " +
-//                "ON u.nickname = uf.author " +
-//                "ORDER BY LOWER(nickname COLLATE \"C\") ASC " +
-//                "LIMIT ?; ",
-//
-//                "SELECT * FROM users u JOIN ( SELECT author FROM users_forum WHERE LOWER(forum) = LOWER(?) AND LOWER(author COLLATE \"C\") < LOWER(?) ) uf " +
-//                "ON u.nickname = uf.author " +
-//                "ORDER BY LOWER(nickname COLLATE \"C\") DESC " +
-//                "LIMIT ?; ",
-
-                "SELECT * FROM users u  JOIN users_forum uf " +
-                "ON (u.nickname = uf.author) " +
-                "WHERE LOWER(uf.forum) = LOWER(?) " +
-                "ORDER BY LOWER(nickname COLLATE \"C\") ASC " +
-                "LIMIT ?;",
-
-                "SELECT * FROM users u  JOIN users_forum uf " +
-                "ON (u.nickname = uf.author) " +
-                "WHERE LOWER(uf.forum) = LOWER(?) " +
-                "ORDER BY LOWER(nickname COLLATE \"C\") DESC " +
-                "LIMIT ?;",
-
-                "SELECT * FROM users u  JOIN users_forum uf " +
-                "ON (u.nickname = uf.author) " +
-                "WHERE LOWER(uf.forum) = LOWER(?) AND lower(nickname COLLATE \"C\") > lower(? COLLATE \"C\") " +
-                "ORDER BY LOWER(nickname COLLATE \"C\") ASC " +
-                "LIMIT ?;",
-
-                "SELECT * FROM users u  JOIN users_forum uf " +
-                "ON (u.nickname = uf.author) " +
-                "WHERE LOWER(uf.forum) = LOWER(?) AND lower(nickname COLLATE \"C\") < lower(? COLLATE \"C\") " +
-                "ORDER BY LOWER(nickname COLLATE \"C\") DESC " +
-                "LIMIT ?;"
-        };
-
         String sql = null;
-        if (since == null && !desc) sql = queries[0];
-        if (since == null && desc)  sql = queries[1];
-        if (since != null && !desc) sql = queries[2];
-        if (since != null && desc)  sql = queries[3];
+        if (since == null && !desc) sql = Queries.selectUserForum;
+        if (since == null && desc)  sql = Queries.selectUserForumDesc;
+        if (since != null && !desc) sql = Queries.selectUserForumSince;
+        if (since != null && desc)  sql = Queries.selectUserForumDescSince;
 
-        List<User> userList = null;
+        List<String> nicknames = null;
         try {
-            if (since != null)
-                userList = jdbc.query(sql, new userMapper(), forumSlug, since, limit);
-            else
-                userList = jdbc.query(sql, new userMapper(), forumSlug, limit);
-            System.out.println(userList);
+            if (since != null) {
+                nicknames = jdbc.queryForList(sql, String.class, forumSlug, since, limit);
+            } else {
+                nicknames = jdbc.queryForList(sql, String.class, forumSlug, limit);
+            }
         } catch (DataAccessException e) {
+            e.printStackTrace();
             return null;
         }
-        return userList;
+
+        if (nicknames.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        String order = (desc) ? "DESC " : "ASC ";
+        String usersNicknames = listToString(nicknames);
+        StringBuilder sqlBuilderGetForumUsers = new StringBuilder();
+        sqlBuilderGetForumUsers.append("SELECT * FROM users WHERE nickname IN " + usersNicknames + " ");
+        sqlBuilderGetForumUsers.append("ORDER BY lower(nickname COLLATE \"C\") " + order);
+
+        String sqlGetForumUsers = sqlBuilderGetForumUsers.toString();
+
+        List<User> usersForum = null;
+        try {
+            usersForum = jdbc.query(sqlGetForumUsers, new userMapper());
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return usersForum;
     }
 
 
