@@ -94,6 +94,7 @@ public class ForumContoller {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.FORUM_NOT_FOUND.getMessage() + forumSlug));
 
         List<Thread> threadList = threadService.getThreadsByForumSlug(forumSlug, limit, since, desc);
+
         return ResponseEntity.status(HttpStatus.OK).body(threadList);
     }
 
@@ -109,6 +110,7 @@ public class ForumContoller {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.FORUM_NOT_FOUND.getMessage() + forumSlug));
 
         List<User> userList = userService.getUsersByForumSlug(forumSlug, limit, since, desc);
+
         if(userList == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Message(MessageStates.USER_IN_FORUM_NOT_FOUND.getMessage() + forumSlug));
         }
