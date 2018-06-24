@@ -6,27 +6,25 @@ import forumapi.databases.models.PostUpdate;
 import forumapi.databases.models.Queries;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.BatchPreparedStatementSetter;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.PreparedStatementSetter;
-import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.*;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import javax.sql.DataSource;
+
 
 import javax.xml.crypto.Data;
 import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @Transactional
 public class PostService {
     private final JdbcTemplate jdbc;
+    private static DataSource dataSource;
 
     @Autowired
     public PostService(JdbcTemplate jdbc) {
@@ -80,26 +78,30 @@ public class PostService {
         return post;
     }
 
-    public List<Post> addPostList(List<Post> posts) {
 
+    // 1_2
+    public List<Post> addPostList(List<Post> posts) {
         final Timestamp curr_time = jdbc.queryForObject(Queries.selectCurrentTime, Timestamp.class);
         final String time = curr_time.toInstant().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
-        try {
-            jdbc.batchUpdate(Queries.insertPost, new postBatchPreparedStatementSetter(posts, time, curr_time));
-            jdbc.batchUpdate(Queries.insertToUserForum, new forumUserBatchPreparedStatementSetter(posts));
-        } catch (DataAccessException e) {
-            e.printStackTrace();
-            return null;
+        String forumSlug = posts.get(0).getForum();
+        List<String> users = new ArrayList<>();
+
+        for (Post post : posts) {
+            Integer seq = jdbc.queryForObject(Queries.selectPostSeq, Integer.class);
+            post.setId(seq);
+            post.setCreated(time);
+            jdbc.update(Queries.insertPost, post.getId(), post.getParent(), post.getAuthor(), post.getMessage(),
+                    post.getThread(), post.getForum(), curr_time, post.getParent(), post.getId());
+            users.add(post.getAuthor());
         }
 
-        try {
-            jdbc.update(Queries.updateForumPosts, posts.size(), posts.get(0).getForum());
-        } catch (DataAccessException e) {
-            e.printStackTrace();
-            return null;
+        Collections.sort(users);
+        for (String user: users) {
+            jdbc.update(Queries.insertToUserForum, forumSlug, user);
         }
 
+        jdbc.update(Queries.updateForumPosts, posts.size(), posts.get(0).getForum());
         return posts;
     }
 
@@ -224,16 +226,19 @@ public class PostService {
         List<Post> posts;
         String time;
         Timestamp curr_time;
+        List<String> users;
 
-        public postBatchPreparedStatementSetter(List<Post> posts, String time, Timestamp curr_time) {
+        public postBatchPreparedStatementSetter(List<Post> posts, String time, Timestamp curr_time, List<String> users) {
             this.posts = posts;
             this.time = time;
             this.curr_time = curr_time;
+            this.users = users;
         }
 
         @Override
         public void setValues(PreparedStatement preparedStatement, int i) throws SQLException {
             Post post = posts.get(i);
+            users.set(i, post.getAuthor());
             Integer seq = null;
             try {
                 seq = jdbc.queryForObject(Queries.selectPostSeq, Integer.class);

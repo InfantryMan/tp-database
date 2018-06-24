@@ -30,7 +30,7 @@ public class Queries {
     public static final String selectPostById = "SELECT * FROM posts WHERE id = ?;";
     public static final String selectPostSeq = "SELECT nextval('posts_id_seq');";
     public static final String insertPost = "INSERT INTO posts(id, parent, author, message, thread, forum, created, post_path) " +
-                                            "VALUES(?,?,?,?,?,?,?, array_append((SELECT post_path FROM posts WHERE id = ?), ?) );";
+                                            "VALUES(?,?,?,?,?,?,?, array_append((SELECT post_path FROM posts WHERE id = ?), ?) ); ";
     public static final String truncatePosts = "TRUNCATE TABLE posts CASCADE; ";
     public static final String selectPostsCount = "SELECT COUNT(id) FROM POSTS;";
     public static final String updatePost = "UPDATE posts SET isEdited = true, message = ? WHERE id = ? RETURNING *;";
@@ -50,7 +50,7 @@ public class Queries {
     public static final String truncateVotes = "TRUNCATE TABLE votes CASCADE; ";
 
     // Users_forum
-    public static final String insertToUserForum = "INSERT INTO users_forum(forum, author) VALUES (?, ?) ON CONFLICT DO NOTHING;";
+    public static final String insertToUserForum = "INSERT INTO users_forum(forum, author) VALUES (?, ?) ON CONFLICT DO NOTHING; ";
     public static final String selectUserForumCount = "SELECT COUNT(*) FROM users_forum WHERE lower(author) = lower(?) AND lower(forum) = lower(?) LIMIT 1;";
 
     public static final String selectUserForum = "SELECT author FROM users_forum WHERE lower(forum) = lower(?) " +
